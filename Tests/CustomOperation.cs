@@ -1,30 +1,58 @@
-using Azure;
-using Azure.Core;
 using Azure.FX.Core;
 using NUnit.Framework;
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
-public class GenericOperationTests
+public class OperationTests
 {
-    class MyOperation : ProcessorOperation
+    class AddOperation : ProcessorOperation
     {
-        public override void Complete()
-            => throw new NotImplementedException();
+        internal int _x;
+        internal int _y;
+        public long Result { get; private set; }
 
-        public override void CompleteWhen(ProcessorOperation operation, OperationState state)
-            => throw new NotImplementedException();
-
-        protected override Task DoAsync()
+        public AddOperation(int x, int y)
         {
-            Console.WriteLine("Hello World!");
-            return Task.CompletedTask;
+            _x = x;
+            _y = y;
+        }
+
+        Random rand = new Random(100);
+        protected async override Task DoAsync()
+        {
+            await Task.Delay(rand.Next(1000));
+            Result = _x + _y;
+            OnCompleted();
         }
     }
 
     [Test]
-    public void HelloWorld()
+    public void Add()
     {
-        OperationProcessor.Shared.ExecuteOperation(new MyOperation());
+        var operation = new AddOperation(5, 2);
+        OperationProcessor.Shared.ExecuteOperation(operation);
+        operation.WaitForCompletion();
+        Assert.AreEqual(7, operation.Result);
+    }
+
+    [Test]
+    public void ManyAdds()
+    {
+        OperationProcessor.Shared.Completed += (operation) =>
+        {
+            var add = operation as AddOperation;
+            Assert.AreEqual(add._x + add._y, add.Result);
+            Debug.WriteLine(add.Result);
+        };
+
+        var op1 = new AddOperation(5, 1);
+        var op2 = new AddOperation(5, 2);
+        var op3 = new AddOperation(5, 3);
+        OperationProcessor.Shared.ExecuteOperation(op1);
+        OperationProcessor.Shared.ExecuteOperation(op2);
+        OperationProcessor.Shared.ExecuteOperation(op3);
+
+        OperationProcessor.WaitForCompletion(op1, op2, op3);
     }
 }

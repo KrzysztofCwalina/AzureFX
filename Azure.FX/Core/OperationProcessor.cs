@@ -1,19 +1,9 @@
 ﻿using Azure;
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
-
-namespace Azure
-{
-    public enum OperationState
-    {
-        Failed,
-        Completed,
-        InProgress,
-    }
-}
 
 namespace Azure.FX.Core
 {
@@ -22,18 +12,26 @@ namespace Azure.FX.Core
         protected CancellationTokenSource _ctSource = new CancellationTokenSource();
         protected int _numberOfTries;
         internal Task _task;
-
+        public bool IsCompleted { get; protected set; }
         public DateTime CreatedTime { get; internal set; }
         public int NumberOfRetries => _numberOfTries < 2 ? 0 : _numberOfTries - 1;
         public object Tag { get; internal set; }
         public TimeSpan Age { get; set; }
 
-        public Task WaitForCompletionAsync(CancellationToken cancellationToken = default) { throw new NotImplementedException(); }
-        public void WaitForCompletion(CancellationToken cancellationToken = default) { throw new NotImplementedException(); }
+        public async Task WaitForCompletionAsync() => await _task;
+        
+        public bool WaitForCompletion(CancellationToken cancellationToken = default) { 
+            while(!IsCompleted)
+            {
+                Thread.Sleep(50);
+                if (cancellationToken.IsCancellationRequested) return false;
+            }
+            return true;
+        }
 
-        public abstract void Complete();
+        public virtual void Complete() { } // override if anything needs to be commited
 
-        public abstract void CompleteWhen(ProcessorOperation operation, OperationState state);
+        public virtual void CompleteWhen(ProcessorOperation operation, OperationState state) { } // override if Complete is no a noop
 
         protected internal abstract Task DoAsync();
 
@@ -44,9 +42,15 @@ namespace Azure.FX.Core
         public void Cancel()
         {
             _ctSource.Cancel();
-            Cancelled.Invoke();
+            OnCancelled();
         }
 
+        protected internal void OnCompleted()
+        {
+            IsCompleted = true;
+            Completed?.Invoke();
+        }
+        protected void OnCancelled() => Cancelled?.Invoke();
         public event Action Completed;
         public event Action Cancelled;
     }
@@ -55,22 +59,28 @@ namespace Azure.FX.Core
     {
         private OperationProcessor() { }
         public static OperationProcessor Shared { get; } = new OperationProcessor();
+        public event Action<ProcessorOperation> Completed;
 
-        ConcurrentQueue<ProcessorOperation> _operations = new ConcurrentQueue<ProcessorOperation>();
+        List<ProcessorOperation> _operations = new List<ProcessorOperation>(); // TODO: this is a really bad datastructure for this scenario
 
         public void ExecuteOperation(ProcessorOperation operation)
         {
-            _operations.Enqueue(operation);
+            lock (_operations) _operations.Add(operation);
             var task = operation.DoAsync();
-            task.ContinueWith(Completed);
-
+            if (task.IsCompleted) OnCompleted(task, operation);
+            else task.ContinueWith(OnCompleted, operation);
             operation._task = task;
         }
 
-        private void Completed(Task tak)
+        private void OnCompleted(Task task, object operation)
         {
-
+            var op = operation as ProcessorOperation;
+            op._task = null;
+            op.OnCompleted();
+            Completed?.Invoke(op);
+            lock(_operations) _operations.Remove(op);
         }
+
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override bool Equals(object obj) => base.Equals(obj);
 
@@ -85,9 +95,37 @@ namespace Azure.FX.Core
             while (_operations.Count != 0 && !cancellationToken.IsCancellationRequested) Thread.Sleep(50);
         }
 
-        public static void WaitForCompletion(params ProcessorOperation[] operations)
+        public static bool WaitForCompletion(ProcessorOperation[] operations, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            foreach(var operation in operations)
+            {
+                if (!operation.WaitForCompletion(cancellationToken))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
+        public static bool WaitForCompletion(params ProcessorOperation[] operations)
+        {
+            foreach (var operation in operations)
+            {
+                if (!operation.WaitForCompletion())
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+}
+
+namespace Azure
+{
+    public enum OperationState
+    {
+        Failed,
+        Completed,
+        InProgress,
     }
 }
