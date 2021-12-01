@@ -1,0 +1,19 @@
+﻿Pri 1
+
+Pri 2
+- how can operations survive process crash?
+
+Triggers (https://docs.microsoft.com/en-us/azure/azure-functions/functions-triggers-bindings?tabs=csharp)
+- Event Grid
+- Event Hubs
+- HTTP?
+- IoT Hub
+- Queue Storage
+- Tables storage
+- Service Bus
+- Storage
+- Signal R
+- Timer
+
+Feedback:
+1. What about debugging?
