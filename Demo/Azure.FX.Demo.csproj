@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Azure\Azure.FX.csproj" />
+    <ProjectReference Include="..\Azure.FX\Azure.FX.csproj" />
   </ItemGroup>
 
 </Project>

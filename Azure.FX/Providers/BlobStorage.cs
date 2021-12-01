@@ -1,8 +1,6 @@
-﻿using Azure.Core;
-using Azure.FX.Core;
+﻿using Azure.FX.Core;
 using Azure.Identity;
 using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using System;
 using System.ComponentModel;
 using System.IO;
@@ -23,46 +21,34 @@ namespace Azure.FX
         public BlobStorage(BlobServiceClient serviceClient)
             => _client = serviceClient;
 
+        public event Action<DownloadOperation> Downloaded;
+        public event Action<UploadOperation> Uploaded;
+        public event Action<StorageProcessorError> Error;
+
         public UploadOperation UploadDirectory(string sourceDirectory, string destinationContainer)
-        {
-            throw new NotImplementedException();
-        }
+            => throw new NotImplementedException();
 
         public BlobServiceClient Client => _client;
 
-        public DownloadOperation DownloadToDirectory(string sourceContainer, string destinationDirectory)
-        {
-            throw new NotImplementedException();
-        }
-
         public override UploadOperation Upload(BinaryData data, string destinationContainer, string destinationBlob)
         {
-            var operation = new UploadOperation(this);
-            operation.Container = destinationContainer;
-            operation.Blob = destinationBlob;
-            operation.Data = data;
-            operation.Run();
+            var operation = new UploadBlobOperation(destinationContainer, destinationBlob, data);
+            operation.Run(this);
             OperationProcessor.Shared.ExecuteOperation(operation);
             return operation;
         }
 
+        public DownloadOperation DownloadToDirectory(string sourceContainer, string destinationDirectory)
+            => throw new NotImplementedException();
+
         public BinaryData Download(string sourceContainer, string sourceBlob)
-        {
-            throw new NotImplementedException();
-        }
+            => throw new NotImplementedException();
+
         public override DownloadOperation DownloadToFile(string sourceContainer, string sourceBlob, string destinationPath)
-        {
-            throw new NotImplementedException();
-        }
+            => throw new NotImplementedException();
 
         public override DownloadOperation DownloadToStream(string sourceContainer, string sourceBlob, Stream destinationStream, bool closeStreamWhenDone = true)
-        {
-            throw new NotImplementedException();
-        }
-
-        public event Action<DownloadOperation> Downloaded;
-        public event Action<UploadOperation> Uploaded;
-        public event Action<StorageProcessorError> Error;
+            => throw new NotImplementedException();
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override bool Equals(object obj) => base.Equals(obj);
@@ -73,29 +59,14 @@ namespace Azure.FX
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override string ToString() => base.ToString();
 
-        public void WaitForCompletion()
-        {
-            throw new NotImplementedException();
-        }
-
-        internal void Completed(DownloadOperation downloadOperation)
-            => Downloaded?.Invoke(downloadOperation);
-        internal void Completed(UploadOperation downloadOperation)
-            => Uploaded?.Invoke(downloadOperation);
-    }
-
-    public class StorageProcessorError
-    {
-        public UploadOperation Operation { get; }
     }
 
     public class DownloadBlobOperation : DownloadOperation
     {
         public int ConcurrencyLevel { get; set; }
 
-        public DownloadBlobOperation(string container, string blob) : base(container, blob)
-        {
-        }
+        public DownloadBlobOperation(string sourceContainer, string sourceBlob) : base(sourceContainer, sourceBlob)
+        {}
 
         protected internal override Task DoAsync()
             => throw new NotImplementedException();
@@ -110,8 +81,15 @@ namespace Azure.FX
             => throw new NotImplementedException();
     }
 
-    internal class BlobUploadOperation : UploadOperation
+    public class UploadBlobOperation : UploadOperation
     {
+        BinaryData _data;
+        public UploadBlobOperation(string destinationContainer, string destinationBlob, BinaryData data)
+            : base(destinationContainer, destinationBlob)
+        {
+            _data = data;
+        }
+
         protected internal override Task DoAsync() 
             => throw new NotImplementedException();
 
@@ -123,5 +101,10 @@ namespace Azure.FX
 
         public void Run(BlobStorage storage)
             => throw new NotImplementedException();
+    }
+
+    public class StorageProcessorError
+    {
+        public UploadOperation Operation { get; }
     }
 }

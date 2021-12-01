@@ -1,8 +1,6 @@
-﻿using Azure.Core;
-using Azure.FX.Core;
+﻿using Azure.FX.Core;
 using System;
 using System.IO;
-using System.Threading.Tasks;
 
 namespace Azure.FX
 {
@@ -17,23 +15,29 @@ namespace Azure.FX
         public abstract DownloadOperation DownloadToStream(string sourceContainer, string sourceBlob, Stream destinationStream, bool closeStreamWhenDone = true);
     }
 
-    public abstract class DownloadOperation : ProcessorOperation
+    public abstract class BlobOperation : ProcessorOperation
     {
         public string Blob { get; protected set; }
         public string Container { get; protected set; }
-        public BinaryData Data { get; protected set; }
 
-        protected DownloadOperation(string container, string blob)
+        protected BlobOperation(string container, string blob)
         {
             Container = container;
             Blob = blob;
         }
     }
 
-    public abstract class UploadOperation : ProcessorOperation
+    public abstract class DownloadOperation : BlobOperation
     {
-        public string Blob { get; protected set; }
-        public string Container { get; protected set; }
-        protected BinaryData Data { get; set; }
+        public BinaryData Data { get; protected set; }
+
+        protected DownloadOperation(string sourceContainer, string sourceBlob)
+            : base(sourceContainer, sourceBlob) {}
+    }
+
+    public abstract class UploadOperation : BlobOperation
+    {
+        protected UploadOperation(string destinationContainer, string destinationBlob)
+            : base(destinationContainer, destinationBlob) {}
     }
 }

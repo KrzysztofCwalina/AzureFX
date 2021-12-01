@@ -21,7 +21,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Azure.FX\Azure.FX.csproj" />
-    <ProjectReference Include="..\Azure\Azure.FX.csproj" />
   </ItemGroup>
 
   <ItemGroup>
