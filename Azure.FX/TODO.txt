@@ -1,4 +1,5 @@
 ﻿Pri 1
+- composite operations, i.e. combine operations into an operation.
 
 Pri 2
 - how can operations survive process crash?

@@ -118,6 +118,21 @@ namespace Azure.FX.Core
             return true;
         }
     }
+
+    public class CompositeOperation : ProcessorOperation
+    {
+        private ProcessorOperation[] _operations;
+
+        public CompositeOperation(params ProcessorOperation[] operations)
+        {
+            _operations = operations;
+        }
+
+        protected internal override Task DoAsync()
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
 
 namespace Azure

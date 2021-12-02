@@ -1,4 +1,3 @@
-using Azure;
 using Azure.FX;
 using Azure.FX.Core;
 using NUnit.Framework;
@@ -53,6 +52,17 @@ public class StorageSamples
     }
 
     [Test]
+    public void Callbacks()
+    {
+        // AzureFX supports scenarios similar to Azure Function triggers, i.e
+        // executing code when interesting events happen.
+        client.BlobCreated = (DownloadOperation download) =>
+        {
+            BinaryData blob = download.Data;
+        };
+    }
+
+    [Test]
     public void ExecutionModel()
     {
         // Operations are also all synchronous, yet they don't block threads.
@@ -73,7 +83,7 @@ public class StorageSamples
     }
 
     [Test]
-    public void DownloadAdvanced()
+    public void OperationsModel()
     {
         // BlobStorage ("client") will expose a smal subset of the blob storage APIs.
         // More knobs can be exposed on operations, i.e. no need to polute the "client" APIs.
@@ -87,6 +97,10 @@ public class StorageSamples
 
         using var stream = new MemoryStream();
         client.DownloadToStream("test_container", "test_blob1", stream);
+
+        // At the fundamental level, Azure FX is a collection of operations. 
+        // All operations can be instantiated, configured, and executed.
+        // Client APIs are simply helpers for the most common scenarios.
     }
 
     BlobStorage client = new BlobStorage(connectionString: "");
